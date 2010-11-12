@@ -223,6 +223,7 @@ void ASReadStreamCallBack
 @synthesize state;
 @synthesize bitRate;
 @synthesize httpHeaders;
+@synthesize vbr;
 
 //
 // initWithURL
@@ -638,7 +639,7 @@ void ASReadStreamCallBack
 		{
 			CFHTTPMessageSetHeaderFieldValue(message, CFSTR("Range"),
 				(CFStringRef)[NSString stringWithFormat:@"bytes=%ld-%ld", seekByteOffset, fileLength]);
-			discontinuous = YES;
+			discontinuous = vbr;
 		}
 		
 		//
@@ -1068,17 +1069,24 @@ cleanup:
 //
 - (double)calculatedBitRate
 {
-	if (packetDuration && processedPacketsCount > BitRateEstimationMinPackets)
+	if (vbr)
 	{
-		double averagePacketByteSize = processedPacketsSizeTotal / processedPacketsCount;
-		return 8.0 * averagePacketByteSize / packetDuration;
-	}
+		if (packetDuration && processedPacketsCount > BitRateEstimationMinPackets)
+		{
+			double averagePacketByteSize = processedPacketsSizeTotal / processedPacketsCount;
+			return 8.0 * averagePacketByteSize / packetDuration;
+		}
 	
-	if (bitRate)
+		if (bitRate)
+		{
+			return (double)bitRate;
+		}
+	}
+	else
 	{
-		return (double)bitRate;
+		bitRate = 8.0 * asbd.mSampleRate * asbd.mBytesPerPacket * asbd.mFramesPerPacket;
+		return bitRate;
 	}
-	
 	return 0;
 }
 
@@ -1483,18 +1491,25 @@ cleanup:
 	}
 	
 	// get the packet size if it is available
-	UInt32 sizeOfUInt32 = sizeof(UInt32);
-	err = AudioFileStreamGetProperty(audioFileStream, kAudioFileStreamProperty_PacketSizeUpperBound, &sizeOfUInt32, &packetBufferSize);
-	if (err || packetBufferSize == 0)
+	if (vbr)
 	{
-		err = AudioFileStreamGetProperty(audioFileStream, kAudioFileStreamProperty_MaximumPacketSize, &sizeOfUInt32, &packetBufferSize);
+		UInt32 sizeOfUInt32 = sizeof(UInt32);
+		err = AudioFileStreamGetProperty(audioFileStream, kAudioFileStreamProperty_PacketSizeUpperBound, &sizeOfUInt32, &packetBufferSize);
 		if (err || packetBufferSize == 0)
 		{
-			// No packet size available, just use the default
-			packetBufferSize = kAQDefaultBufSize;
+			err = AudioFileStreamGetProperty(audioFileStream, kAudioFileStreamProperty_MaximumPacketSize, &sizeOfUInt32, &packetBufferSize);
+			if (err || packetBufferSize == 0)
+			{
+				// No packet size available, just use the default
+				packetBufferSize = kAQDefaultBufSize;
+			}
 		}
 	}
-
+	else
+	{
+		packetBufferSize = kAQDefaultBufSize;
+	}
+  
 	// allocate audio queue buffers
 	for (unsigned int i = 0; i < kNumAQBufs; ++i)
 	{
@@ -1692,6 +1707,7 @@ cleanup:
 		
 		if (!audioQueue)
 		{
+			vbr = (inPacketDescriptions != nil);
 			[self createQueue];
 		}
 	}
@@ -1961,5 +1977,4 @@ cleanup:
 #endif
 
 @end
-
 
