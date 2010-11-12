@@ -21,6 +21,7 @@
 //     distribution.
 //
 
+#import <Foundation/Foundation.h>
 #if TARGET_OS_IPHONE			
 #import <UIKit/UIKit.h>
 #else
@@ -164,6 +165,7 @@ extern NSString * const ASStatusChangedNotification;
 								// time)
 	double packetDuration;		// sample rate times frames per packet
 	double lastProgress;		// last calculated progress point
+	BOOL vbr; // indicates VBR (or not) stream
 #if TARGET_OS_IPHONE
 	BOOL pausedByInterruption;
 #endif
@@ -175,6 +177,7 @@ extern NSString * const ASStatusChangedNotification;
 @property (readonly) double duration;
 @property (readwrite) UInt32 bitRate;
 @property (readonly) NSDictionary *httpHeaders;
+@property (readonly) BOOL vbr;
 
 - (id)initWithURL:(NSURL *)aURL;
 - (void)start;
@@ -188,7 +191,6 @@ extern NSString * const ASStatusChangedNotification;
 - (double)calculatedBitRate;
 
 @end
-
 
 
 
