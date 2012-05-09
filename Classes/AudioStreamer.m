@@ -1496,6 +1496,17 @@ cleanup:
 		return;
 	}
 	
+	// Prefer hardware playback (faster, more efficient) but fallback to software
+	// (by just preferring instead of requiring hardware) if its unavailable (eg. existing playback)
+	UInt32 val = kAudioQueueHardwareCodecPolicy_PreferHardware;
+	err = AudioQueueSetProperty(audioQueue, kAudioQueueProperty_HardwareCodecPolicy, &val, sizeof(UInt32));
+	if (err)
+	{
+		[self failWithErrorCode:AS_AUDIO_QUEUE_CREATION_FAILED];
+		return;
+	}
+	
+	
 	// start the queue if it has not been started already
 	// listen to the "isRunning" property
 	err = AudioQueueAddPropertyListener(audioQueue, kAudioQueueProperty_IsRunning, MyAudioQueueIsRunningCallback, self);
