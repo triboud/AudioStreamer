@@ -21,12 +21,15 @@
 //     distribution.
 //
 
-#import <Foundation/Foundation.h>
+<<<<<<< HEAD
 #if TARGET_OS_IPHONE			
 #import <UIKit/UIKit.h>
 #else
 #import <Cocoa/Cocoa.h>
 #endif TARGET_OS_IPHONE			
+=======
+#import <Foundation/Foundation.h>
+>>>>>>> cbb8a47... Fix for playing non-VBR streams. Specifically to address playback of wav streams. Tested only on wav streams.
 
 #include <pthread.h>
 #include <AudioToolbox/AudioToolbox.h>
@@ -165,11 +168,13 @@ extern NSString * const ASStatusChangedNotification;
 								// time)
 	double packetDuration;		// sample rate times frames per packet
 	double lastProgress;		// last calculated progress point
-	BOOL vbr; // indicates VBR (or not) stream
+<<<<<<< HEAD
 #if TARGET_OS_IPHONE
 	BOOL pausedByInterruption;
 #endif
-	BOOL preloadRequested;
+=======
+	BOOL vbr; // indicates VBR (or not) stream
+>>>>>>> cbb8a47... Fix for playing non-VBR streams. Specifically to address playback of wav streams. Tested only on wav streams.
 }
 
 @property AudioStreamerErrorCode errorCode;
@@ -184,7 +189,6 @@ extern NSString * const ASStatusChangedNotification;
 - (void)start;
 - (void)stop;
 - (void)pause;
-- (void)preload;
 - (BOOL)isPlaying;
 - (BOOL)isPaused;
 - (BOOL)isWaiting;

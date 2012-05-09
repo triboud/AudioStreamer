@@ -1110,6 +1110,16 @@ cleanup:
 }
 
 //
+// preload
+//
+// Begin preloading this audio stream to be ready for playback
+//
+- (void)preload {
+	preloadRequested = YES;
+	[self start];
+}
+
+//
 // pause
 //
 // A togglable pause function.
@@ -1383,7 +1393,7 @@ cleanup:
 		{
 			return;
 		}
-		
+				
 		inuse[fillBufferIndex] = true;		// set in use flag
 		buffersUsed++;
 
@@ -1419,25 +1429,30 @@ cleanup:
 			//
 			if (state == AS_FLUSHING_EOF || buffersUsed == kNumAQBufs - 1)
 			{
-				if (self.state == AS_BUFFERING)
-				{
-					err = AudioQueueStart(audioQueue, NULL);
-					if (err)
+				if (preloadRequested) {
+					preloadRequested = NO;
+					self.state = AS_PAUSED;
+				} else {
+					if (self.state == AS_BUFFERING)
 					{
-						[self failWithErrorCode:AS_AUDIO_QUEUE_START_FAILED];
-						return;
+						err = AudioQueueStart(audioQueue, NULL);
+						if (err)
+						{
+							[self failWithErrorCode:AS_AUDIO_QUEUE_START_FAILED];
+							return;
+						}
+						self.state = AS_PLAYING;
 					}
-					self.state = AS_PLAYING;
-				}
-				else
-				{
-					self.state = AS_WAITING_FOR_QUEUE_TO_START;
-
-					err = AudioQueueStart(audioQueue, NULL);
-					if (err)
+					else
 					{
-						[self failWithErrorCode:AS_AUDIO_QUEUE_START_FAILED];
-						return;
+						self.state = AS_WAITING_FOR_QUEUE_TO_START;
+
+						err = AudioQueueStart(audioQueue, NULL);
+						if (err)
+						{
+							[self failWithErrorCode:AS_AUDIO_QUEUE_START_FAILED];
+							return;
+						}
 					}
 				}
 			}
