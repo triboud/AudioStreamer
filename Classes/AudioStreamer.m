@@ -865,7 +865,7 @@ cleanup:
 		}
 		
 		//
-		// Close the audio file strea,
+		// Close the audio file stream
 		//
 		if (audioFileStream)
 		{
