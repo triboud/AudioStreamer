@@ -1508,7 +1508,7 @@ cleanup:
 	
 	// Prefer hardware playback (faster, more efficient) but fallback to software
 	// (by just preferring instead of requiring hardware) if its unavailable (eg. existing playback)
-	UInt32 val = kAudioQueueHardwareCodecPolicy_PreferHardware;
+	UInt32 val = kAudioQueueHardwareCodecPolicy_PreferSoftware;
 	err = AudioQueueSetProperty(audioQueue, kAudioQueueProperty_HardwareCodecPolicy, &val, sizeof(UInt32));
 	if (err)
 	{
