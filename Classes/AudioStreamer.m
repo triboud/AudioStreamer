@@ -539,6 +539,18 @@ void ASReadStreamCallBack
 }
 
 //
+// resume
+//
+// resume's the audio playback if it has previously been paused
+//
+- (void)resume {
+	@synchronized(self) {
+		if ([self isPaused])
+			[self pause];
+	}
+}
+
+//
 // isWaiting
 //
 // returns YES if the AudioStreamer is waiting for a state transition of some
