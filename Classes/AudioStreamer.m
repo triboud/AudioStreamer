@@ -939,9 +939,24 @@ cleanup:
 //
 // play
 //
-// Calls startInternal in a new thread.
+// Begins playback of the audio stream
 //
 - (void)play:(SimpleBlock)successBlock :(SimpleBlock)failedBlock
+{
+	// Ensure any outstanding preload is disabled (and instead we just begin playback if preloading completes)
+	@synchronized(self) {
+		preloadRequested = NO;
+		
+		[self playInternal:successBlock :failedBlock];
+	}
+}
+
+//
+// playInternal
+//
+// Calls startInternal in a new thread.
+//
+- (void)playInternal:(SimpleBlock)successBlock :(SimpleBlock)failedBlock
 {
 	@synchronized (self)
 	{
@@ -1168,10 +1183,12 @@ cleanup:
 //
 - (void)preload:(SimpleBlock)successBlock:(SimpleBlock)failedBlock
 {
-	self.preloadCallback = successBlock;
-	
-	preloadRequested = YES;
-	[self play:nil:failedBlock];
+	@synchronized(self) {
+		self.preloadCallback = successBlock;
+		
+		preloadRequested = YES;
+		[self playInternal:nil:failedBlock];
+	}
 }
 
 //
