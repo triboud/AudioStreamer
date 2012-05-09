@@ -937,11 +937,11 @@ cleanup:
 }
 
 //
-// start
+// play
 //
 // Calls startInternal in a new thread.
 //
-- (void)start:(SimpleBlock)successBlock :(SimpleBlock)failedBlock
+- (void)play:(SimpleBlock)successBlock :(SimpleBlock)failedBlock
 {
 	@synchronized (self)
 	{
@@ -1171,7 +1171,7 @@ cleanup:
 	self.preloadCallback = successBlock;
 	
 	preloadRequested = YES;
-	[self start:nil:failedBlock];
+	[self play:nil:failedBlock];
 }
 
 //

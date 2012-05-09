@@ -185,7 +185,7 @@ extern NSString * const ASStatusChangedNotification;
 @property (copy) SimpleBlock failedCallback;
 
 - (id)initWithURL:(NSURL *)aURL;
-- (void)start:(SimpleBlock)successBlock:(SimpleBlock)failedBlock;
+- (void)play:(SimpleBlock)successBlock:(SimpleBlock)failedBlock;
 - (void)stop;
 - (void)pause;
 - (void)resume;
