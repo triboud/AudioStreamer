@@ -223,6 +223,9 @@ void ASReadStreamCallBack
 @synthesize bitRate;
 @synthesize httpHeaders;
 @synthesize vbr;
+@synthesize preloadCallback;
+@synthesize successCallback;
+@synthesize failedCallback;
 
 //
 // initWithURL
@@ -439,9 +442,9 @@ void ASReadStreamCallBack
 			stopReason = AS_STOPPING_ERROR;
 			AudioQueueStop(audioQueue, true);
 		}
-
-		[self presentAlertWithTitle:NSLocalizedStringFromTable(@"File Error", @"Errors", nil)
-							message:NSLocalizedStringFromTable(@"Unable to configure network read stream.", @"Errors", nil)];
+	
+		// Raise error callback
+		[self raiseBlockCallback:failedCallback];
 	}
 }
 
@@ -666,8 +669,8 @@ void ASReadStreamCallBack
 			kCFStreamPropertyHTTPShouldAutoredirect,
 			kCFBooleanTrue) == false)
 		{
-			[self presentAlertWithTitle:NSLocalizedStringFromTable(@"File Error", @"Errors", nil)
-								message:NSLocalizedStringFromTable(@"Unable to configure network read stream.", @"Errors", nil)];
+			// Raise error callback
+			[self raiseBlockCallback:failedCallback];
 			return NO;
 		}
 		
@@ -707,8 +710,9 @@ void ASReadStreamCallBack
 		if (!CFReadStreamOpen(stream))
 		{
 			CFRelease(stream);
-			[self presentAlertWithTitle:NSLocalizedStringFromTable(@"File Error", @"Errors", nil)
-								message:NSLocalizedStringFromTable(@"Unable to configure network read stream.", @"Errors", nil)];
+			
+			// Raise error callback
+			[self raiseBlockCallback:failedCallback];
 			return NO;
 		}
 		
@@ -892,9 +896,31 @@ cleanup:
 
 		[internalThread release];
 		internalThread = nil;
+		
+		// Raise any success/failure callback
+		if (stopReason == AS_STOPPING_EOF) {
+			// We stopped playing due to end of file
+			NSLog(@"StopReason was EOF, raising success callback");
+			[self raiseBlockCallback:successCallback];
+		} else if (stopReason == AS_STOPPING_ERROR) {
+			// An error occurred during playback
+			NSLog(@"StopReason was ERROR, raising failure callback");
+			[self raiseBlockCallback:failedCallback];
+		}
 	}
 
 	[pool release];
+}
+
+-(void)callbackWrapper:(SimpleBlock)block
+{
+	block();
+}
+
+-(void) raiseBlockCallback:(SimpleBlock)block
+{
+	if (block)
+		[self performSelectorOnMainThread:@selector(callbackWrapper:) withObject:block waitUntilDone:NO];
 }
 
 //
@@ -902,10 +928,13 @@ cleanup:
 //
 // Calls startInternal in a new thread.
 //
-- (void)start
+- (void)start:(SimpleBlock)successBlock :(SimpleBlock)failedBlock
 {
 	@synchronized (self)
 	{
+		self.successCallback = successBlock;
+		self.failedCallback = failedBlock;
+		
 		if (state == AS_PAUSED)
 		{
 			[self pause];
@@ -1124,9 +1153,12 @@ cleanup:
 //
 // Begin preloading this audio stream to be ready for playback
 //
-- (void)preload {
+- (void)preload:(SimpleBlock)completeBlock:(SimpleBlock)failedBlock
+{
+	self.preloadCallback = completeBlock;
+	
 	preloadRequested = YES;
-	[self start];
+	[self start:nil:failedBlock];
 }
 
 //
@@ -1440,8 +1472,12 @@ cleanup:
 			if (state == AS_FLUSHING_EOF || buffersUsed == kNumAQBufs - 1)
 			{
 				if (preloadRequested) {
+					// Preload completed
 					preloadRequested = NO;
 					self.state = AS_PAUSED;
+					
+					// Raise callback
+					[self raiseBlockCallback:preloadCallback];
 				} else {
 					if (self.state == AS_BUFFERING)
 					{

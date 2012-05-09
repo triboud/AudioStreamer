@@ -30,6 +30,7 @@
 
 #include <pthread.h>
 #include <AudioToolbox/AudioToolbox.h>
+#include "Blocks.h"
 
 #define LOG_QUEUED_BUFFERS 0
 
@@ -179,12 +180,15 @@ extern NSString * const ASStatusChangedNotification;
 @property (readwrite) UInt32 bitRate;
 @property (readonly) NSDictionary *httpHeaders;
 @property (readonly) BOOL vbr;
+@property (copy) SimpleBlock preloadCallback;
+@property (copy) SimpleBlock successCallback;
+@property (copy) SimpleBlock failedCallback;
 
 - (id)initWithURL:(NSURL *)aURL;
-- (void)start;
+- (void)start:(SimpleBlock)successBlock:(SimpleBlock)failedBlock;
 - (void)stop;
 - (void)pause;
-- (void)preload;
+- (void)preload:(SimpleBlock)completeBlock:(SimpleBlock)failedBlock;
 - (BOOL)isPlaying;
 - (BOOL)isPaused;
 - (BOOL)isWaiting;
