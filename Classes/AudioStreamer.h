@@ -189,7 +189,7 @@ extern NSString * const ASStatusChangedNotification;
 - (void)stop;
 - (void)pause;
 - (void)resume;
-- (void)preload:(SimpleBlock)completeBlock:(SimpleBlock)failedBlock;
+- (void)preload:(SimpleBlock)successBlock:(SimpleBlock)failedBlock;
 - (BOOL)isPlaying;
 - (BOOL)isPaused;
 - (BOOL)isWaiting;

@@ -1166,9 +1166,9 @@ cleanup:
 //
 // Begin preloading this audio stream to be ready for playback
 //
-- (void)preload:(SimpleBlock)completeBlock:(SimpleBlock)failedBlock
+- (void)preload:(SimpleBlock)successBlock:(SimpleBlock)failedBlock
 {
-	self.preloadCallback = completeBlock;
+	self.preloadCallback = successBlock;
 	
 	preloadRequested = YES;
 	[self start:nil:failedBlock];
