@@ -722,6 +722,7 @@ void ASReadStreamCallBack
 		if (!CFReadStreamOpen(stream))
 		{
 			CFRelease(stream);
+			stream = nil;
 			
 			// Raise error callback
 			[self raiseBlockCallback:failedCallback];
