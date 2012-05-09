@@ -220,7 +220,6 @@ void ASReadStreamCallBack
 @implementation AudioStreamer
 
 @synthesize errorCode;
-@synthesize state;
 @synthesize bitRate;
 @synthesize httpHeaders;
 @synthesize vbr;
@@ -492,6 +491,17 @@ void ASReadStreamCallBack
 					waitUntilDone:NO];
 			}
 		}
+	}
+}
+
+//
+// state
+//
+// returns the current audio player state
+//
+- (AudioStreamerState)state {
+	@synchronized(self) {
+		return state;
 	}
 }
 
