@@ -1141,6 +1141,11 @@ cleanup:
 			{
 				return lastProgress;
 			}
+			else if (err == kAudioQueueErr_InvalidRunState)
+			{
+				// Invalid run state (stream has finished for example)
+				return 0;
+			}
 			else if (err)
 			{
 				[self failWithErrorCode:AS_GET_AUDIO_TIME_FAILED];
@@ -1154,6 +1159,9 @@ cleanup:
 			
 			lastProgress = progress;
 			return progress;
+		} else {
+			// Return the stream duration instead as we are finishing up (and at the end of the stream)
+			return self.duration;
 		}
 	}
 	
