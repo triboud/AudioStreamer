@@ -943,6 +943,10 @@ cleanup:
 		[internalThread release];
 		internalThread = nil;
 		
+		// Mark lastProgress as duration if we reached EOF
+		if (stopReason == AS_STOPPING_EOF)
+			lastProgress = self.duration;
+		
 		// Raise any success/failure callback
 		if (stopReason == AS_STOPPING_EOF) {
 			// We stopped playing due to end of file
