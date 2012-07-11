@@ -33,8 +33,9 @@
 #include "Blocks.h"
 
 #define LOG_QUEUED_BUFFERS 0
+#define LOG_STATUS 0
 
-#define kNumAQBufs 16			// Number of audio queue buffers we allocate.
+#define kNumAQBufs 128			// Number of audio queue buffers we allocate.
 								// Needs to be big enough to keep audio pipeline
 								// busy (non-zero number of queued buffers) but
 								// not so big that audio takes too long to begin
@@ -45,6 +46,8 @@
 								// buffers are queued at any time -- if it drops
 								// to zero too often, this value may need to
 								// increase. Min 3, typical 8-24.
+
+#define kMinAQBufs 24
 								
 #define kAQDefaultBufSize 2048	// Number of bytes in each audio queue buffer
 								// Needs to be big enough to hold a packet of
@@ -171,8 +174,13 @@ extern NSString * const ASStatusChangedNotification;
 	BOOL pausedByInterruption;
 #endif
 	BOOL preloadRequested;
+    
+    BOOL isFilled;
+    
+    BOOL queueStarted;
 }
 
+@property (readonly) BOOL   canSeek;
 @property AudioStreamerErrorCode errorCode;
 @property (readonly) AudioStreamerState state;
 @property (readonly) double progress;
@@ -183,6 +191,7 @@ extern NSString * const ASStatusChangedNotification;
 @property (copy) SimpleBlock preloadCallback;
 @property (copy) SimpleBlock successCallback;
 @property (copy) SimpleBlock failedCallback;
+@property (copy) SimpleBlock seekCallback;
 
 - (id)initWithURL:(NSURL *)aURL;
 - (void)play:(SimpleBlock)successBlock:(SimpleBlock)failedBlock;
@@ -194,7 +203,7 @@ extern NSString * const ASStatusChangedNotification;
 - (BOOL)isPaused;
 - (BOOL)isWaiting;
 - (BOOL)isIdle;
-- (void)seekToTime:(double)newSeekTime;
+- (BOOL)seekToTime:(double)newSeekTime:(SimpleBlock)successBlock;
 - (double)calculatedBitRate;
 
 @end
