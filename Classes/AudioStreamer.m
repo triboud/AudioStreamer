@@ -1340,6 +1340,8 @@ cleanup:
 {
 	@synchronized(self)
 	{
+        seekWasRequested = NO;
+        seekTime = 0.0f;
 		if (audioQueue &&
 			(state == AS_PLAYING || state == AS_PAUSED ||
 				state == AS_BUFFERING || state == AS_WAITING_FOR_QUEUE_TO_START))
@@ -1389,7 +1391,6 @@ cleanup:
 - (void)handleReadFromStream:(CFReadStreamRef)aStream
 	eventType:(CFStreamEventType)eventType
 {
-    NSLog(@"Read From Stream %lu", eventType);
 	if (aStream != stream)
 	{
 		//
@@ -1404,7 +1405,6 @@ cleanup:
 	}
 	else if (eventType == kCFStreamEventEndEncountered)
 	{
-        NSLog(@"Read From Stream END");
 		@synchronized(self)
 		{
 			if ([self isFinishing])
