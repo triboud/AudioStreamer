@@ -32,8 +32,8 @@
 #include <AudioToolbox/AudioToolbox.h>
 #include "Blocks.h"
 
-#define LOG_QUEUED_BUFFERS 0
-#define LOG_STATUS 0
+//#define LOG_QUEUED_BUFFERS 0
+//#define LOG_STATUS 0
 
 #define kNumAQBufs 128			// Number of audio queue buffers we allocate.
 								// Needs to be big enough to keep audio pipeline
@@ -47,7 +47,7 @@
 								// to zero too often, this value may need to
 								// increase. Min 3, typical 8-24.
 
-#define kMinAQBufs 24
+#define kMinAQBufs 80
 								
 #define kAQDefaultBufSize 2048	// Number of bytes in each audio queue buffer
 								// Needs to be big enough to hold a packet of
@@ -169,6 +169,7 @@ extern NSString * const ASStatusChangedNotification;
 								// time)
 	double packetDuration;		// sample rate times frames per packet
 	double lastProgress;		// last calculated progress point
+	double lastMeter;		// last calculated progress point
 	BOOL vbr; // indicates VBR (or not) stream
 #if TARGET_OS_IPHONE
 	BOOL pausedByInterruption;
@@ -178,6 +179,8 @@ extern NSString * const ASStatusChangedNotification;
     BOOL isFilled;
     
     BOOL queueStarted;
+    
+    AudioQueueLevelMeterState *_levels;
 }
 
 @property (readonly) BOOL   canSeek;
@@ -205,6 +208,7 @@ extern NSString * const ASStatusChangedNotification;
 - (BOOL)isIdle;
 - (BOOL)seekToTime:(double)newSeekTime:(SimpleBlock)successBlock;
 - (double)calculatedBitRate;
+- (double)currentLevelMeter;
 
 @end
 

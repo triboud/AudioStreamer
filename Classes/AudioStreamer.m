@@ -29,6 +29,8 @@
 #define BitRateEstimationMaxPackets 5000
 #define BitRateEstimationMinPackets 50
 
+static AudioStreamer* currentInstance;
+
 NSString * const ASStatusChangedNotification = @"ASStatusChangedNotification";
 
 NSString * const AS_NO_ERROR_STRING = @"No error.";
@@ -191,8 +193,9 @@ void MyAudioQueueIsRunningCallback(void *inUserData, AudioQueueRef inAQ, AudioQu
 //
 void MyAudioSessionInterruptionListener(void *inClientData, UInt32 inInterruptionState)
 {
-	AudioStreamer* streamer = (AudioStreamer *)inClientData;
-	[streamer handleInterruptionChangeToState:inInterruptionState];
+//	AudioStreamer* streamer = (AudioStreamer *)inClientData;
+    if (currentInstance != NULL)
+        [currentInstance handleInterruptionChangeToState:inInterruptionState];
 }
 #endif
 
@@ -248,6 +251,10 @@ void ASReadStreamCallBack
 //
 - (void)dealloc
 {
+    if (currentInstance == self)
+        currentInstance = nil;
+    if (_levels)
+        free(_levels);
 	[self stop];
 	[url release];
 	[super dealloc];
@@ -516,8 +523,7 @@ void ASReadStreamCallBack
 	{
 		if (state != aStatus)
 		{
-			state = aStatus;
-			
+            state = aStatus;
 			if ([[NSThread currentThread] isEqual:[NSThread mainThread]])
 			{
 				[self mainThreadStateNotification];
@@ -722,7 +728,7 @@ void ASReadStreamCallBack
 			if (fileLength > 0 && seekByteOffset > 0)
 			{
 				CFHTTPMessageSetHeaderFieldValue(message, CFSTR("Range"),
-					(CFStringRef)[NSString stringWithFormat:@"bytes=%ld-%ld", seekByteOffset, fileLength]);
+					(CFStringRef)[NSString stringWithFormat:@"bytes=%d-%d", seekByteOffset, fileLength]);
 				discontinuous = vbr;
 			}
 		
@@ -865,7 +871,7 @@ void ASReadStreamCallBack
 //			sizeof (sessionCategory),
 //			&sessionCategory
 //		);
-//		
+//
 //		UInt32 mixWithOthers = 1;
 //		AudioSessionSetProperty (
 //			kAudioSessionProperty_OverrideCategoryMixWithOthers,
@@ -954,6 +960,7 @@ cleanup:
         NSLog(@"Dispose audioqueue");
 		if (audioQueue)
 		{
+            
 			err = AudioQueueDispose(audioQueue, true);
 			audioQueue = nil;
 			if (err)
@@ -1021,6 +1028,7 @@ cleanup:
 //
 - (void)play:(SimpleBlock)successBlock :(SimpleBlock)failedBlock
 {
+    currentInstance = self;
 	// Ensure any outstanding preload is disabled (and instead we just begin playback if preloading completes)
 	@synchronized(self) {
 		preloadRequested = NO;
@@ -1229,6 +1237,100 @@ cleanup:
 	return lastProgress;
 }
 
+
+- (NSString *)OSStatusToStr:(OSStatus)st { switch (st) { case kAudioFileUnspecifiedError: return @"kAudioFileUnspecifiedError";
+        
+    case kAudioFileUnsupportedFileTypeError:
+        return @"kAudioFileUnsupportedFileTypeError";
+        
+    case kAudioFileUnsupportedDataFormatError:
+        return @"kAudioFileUnsupportedDataFormatError";
+        
+    case kAudioFileUnsupportedPropertyError:
+        return @"kAudioFileUnsupportedPropertyError";
+        
+    case kAudioFileBadPropertySizeError:
+        return @"kAudioFileBadPropertySizeError";
+        
+    case kAudioFilePermissionsError:
+        return @"kAudioFilePermissionsError";
+        
+    case kAudioFileNotOptimizedError:
+        return @"kAudioFileNotOptimizedError";
+        
+    case kAudioFileInvalidChunkError:
+        return @"kAudioFileInvalidChunkError";
+        
+    case kAudioFileDoesNotAllow64BitDataSizeError:
+        return @"kAudioFileDoesNotAllow64BitDataSizeError";
+        
+    case kAudioFileInvalidPacketOffsetError:
+        return @"kAudioFileInvalidPacketOffsetError";
+        
+    case kAudioFileInvalidFileError:
+        return @"kAudioFileInvalidFileError";
+        
+    case kAudioFileOperationNotSupportedError:
+        return @"kAudioFileOperationNotSupportedError";
+        
+    case kAudioFileNotOpenError:
+        return @"kAudioFileNotOpenError";
+        
+    case kAudioFileEndOfFileError:
+        return @"kAudioFileEndOfFileError";
+        
+    case kAudioFilePositionError:
+        return @"kAudioFilePositionError";
+        
+    case kAudioFileFileNotFoundError:
+        return @"kAudioFileFileNotFoundError";
+        
+    default:
+        return @"unknown error";
+}
+}
+- (double)currentLevelMeter
+{
+	@synchronized(self)
+	{
+		if (sampleRate > 0 && ![self isFinishing])
+		{
+			if (state != AS_PLAYING && state != AS_PAUSED && state != AS_BUFFERING)
+			{
+				return lastMeter;
+			}
+            
+            UInt32 dataSize = sizeof(AudioQueueLevelMeterState) * asbd.mChannelsPerFrame;
+//            AudioQueueLevelMeterState *levels = (AudioQueueLevelMeterState*)malloc(dataSize);
+            
+            float channelAvg = 0;
+            
+            NSAssert(_levels != NULL, @"");
+            
+            OSStatus rc = AudioQueueGetProperty(audioQueue, kAudioQueueProperty_CurrentLevelMeter, _levels, &dataSize);
+            if (rc) {
+                NSLog(@"AudioQueueGetProperty(CurrentLevelMeter) returned %ld", rc);
+                return lastMeter;
+            } else {
+                for (int i = 0; i < asbd.mChannelsPerFrame; i++) {
+                    channelAvg += _levels[i].mPeakPower;
+                }
+            }
+            channelAvg /= asbd.mChannelsPerFrame;
+            
+            lastMeter = channelAvg;
+            // This works because one channel always has an mAveragePower of 0.
+            return channelAvg;
+		} else {
+			// Return the stream duration instead as we are finishing up (and at the end of the stream)
+			return lastMeter;
+		}
+	}
+	
+	return lastMeter;
+}
+
+
 //
 // calculatedBitRate
 //
@@ -1340,8 +1442,6 @@ cleanup:
 {
 	@synchronized(self)
 	{
-        seekWasRequested = NO;
-        seekTime = 0.0f;
 		if (audioQueue &&
 			(state == AS_PLAYING || state == AS_PAUSED ||
 				state == AS_BUFFERING || state == AS_WAITING_FOR_QUEUE_TO_START))
@@ -1391,6 +1491,7 @@ cleanup:
 - (void)handleReadFromStream:(CFReadStreamRef)aStream
 	eventType:(CFStreamEventType)eventType
 {
+//    NSLog(@"Read From Stream %lu", eventType);
 	if (aStream != stream)
 	{
 		//
@@ -1405,6 +1506,7 @@ cleanup:
 	}
 	else if (eventType == kCFStreamEventEndEncountered)
 	{
+        NSLog(@"Read From Stream END");
 		@synchronized(self)
 		{
 			if ([self isFinishing])
@@ -1703,9 +1805,16 @@ cleanup:
 		return;
 	}
 	
+    UInt32 dataSize = sizeof(AudioQueueLevelMeterState) * asbd.mChannelsPerFrame;
+    if (_levels)
+        free(_levels);
+    _levels = (AudioQueueLevelMeterState*)malloc(dataSize);
+    
 	// Prefer hardware playback (faster, more efficient) but fallback to software
 	// (by just preferring instead of requiring hardware) if its unavailable (eg. existing playback)
-	UInt32 val = kAudioQueueHardwareCodecPolicy_PreferSoftware;
+	UInt32 val = 1;
+	err = AudioQueueSetProperty(audioQueue, kAudioQueueProperty_EnableLevelMetering, &val, sizeof(UInt32));
+	val = kAudioQueueHardwareCodecPolicy_PreferSoftware;
 	err = AudioQueueSetProperty(audioQueue, kAudioQueueProperty_HardwareCodecPolicy, &val, sizeof(UInt32));
 	if (err)
 	{
