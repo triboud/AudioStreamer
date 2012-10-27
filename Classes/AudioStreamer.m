@@ -255,7 +255,7 @@ void ASReadStreamCallBack
         currentInstance = nil;
     if (_levels)
         free(_levels);
-	[self stop];
+	[self stop:YES];
 	[url release];
 	[super dealloc];
 }
@@ -442,7 +442,8 @@ void ASReadStreamCallBack
 
 		if (state == AS_PLAYING ||
 			state == AS_PAUSED ||
-			state == AS_BUFFERING)
+			state == AS_BUFFERING ||
+            state == AS_WAITING_FOR_DATA)
 		{
 			self.state = AS_STOPPING;
 			stopReason = AS_STOPPING_ERROR;
@@ -1428,6 +1429,15 @@ cleanup:
 	}
 }
 
+- (void)waitingToStop
+{
+	while (state != AS_INITIALIZED)
+	{
+		[NSThread sleepForTimeInterval:0.1];
+	}
+    CFRelease(self);
+}
+
 //
 // stop
 //
@@ -1438,13 +1448,14 @@ cleanup:
 // "isPlaying" property so that it is guaranteed to transition to true and
 // back to false 
 //
-- (void)stop
+
+- (void)stop:(BOOL)shouldWaitToStop
 {
 	@synchronized(self)
 	{
 		if (audioQueue &&
 			(state == AS_PLAYING || state == AS_PAUSED ||
-				state == AS_BUFFERING || state == AS_WAITING_FOR_QUEUE_TO_START))
+             state == AS_BUFFERING || state == AS_WAITING_FOR_QUEUE_TO_START))
 		{
             if (queueStarted == NO)
             {
@@ -1471,12 +1482,22 @@ cleanup:
 			self.state = AS_STOPPED;
 			stopReason = AS_STOPPING_USER_ACTION;
 		}
+        self.preloadCallback = nil;
+        self.successCallback = nil;
+        self.failedCallback = nil;
+        self.seekCallback = nil;
 	}
-	
-	while (state != AS_INITIALIZED)
-	{
-		[NSThread sleepForTimeInterval:0.1];
-	}
+    
+	CFRetain(self);
+    if (shouldWaitToStop)
+        [self waitingToStop];
+    else
+        [self performSelectorInBackground:@selector(waitingToStop) withObject:nil];
+}
+
+- (void)stop
+{
+    [self stop:NO];
 }
 
 //
